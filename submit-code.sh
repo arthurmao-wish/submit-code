@@ -103,9 +103,9 @@ merge_code() {
   echo "git fetch origin"
   git fetch origin
   echo "git checkout origin/${remote_branch}"
-  git checkout origin/${remote_branch}
-  echo "git merge"
-  git merge
+  echo "git merge --no-ff origin/master"
+  git merge --no-ff origin/master
+  git push origin master
 }
 
 main() {
