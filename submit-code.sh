@@ -4,8 +4,9 @@ set -o errexit #abort if any command fails
 #### default args ####
 me=$(basename "$0")
 current_branch=$(git rev-parse --abbrev-ref HEAD)
+current_branch_clean=$(git rev-parse --abbrev-ref HEAD | sed -e 's/([^()]*)//g')
 current_user=$(git config user.name)
-remote_branch="${current_user}-${current_branch}"
+remote_branch="${current_user}-${current_branch_clean}"
 tmp_prefix="_tmp"
 auto_fetch_threshold=3600
 
@@ -69,10 +70,7 @@ parse_args() {
   # Set args from a local environment file.
   if [ -e "$HOME/.submit_code_config" ]; then
     source $HOME/.submit_code_config
-  fi
-
-  current_branch=`git rev-parse --abbrev-ref HEAD`
-  
+  fi  
 
   # Parse arg flags
   # If something is exposed as an environment variable, set/overwrite it
@@ -196,6 +194,8 @@ create_pull_request() {
     echo_green "hub pull-request $hub_args"
     hub pull-request $hub_args
   fi
+  commit_suffix="(#$(hub pr list -h ${remote_branch} -f %I))"
+  git branch -m "${commit_suffix}${current_branch_clean}"
 }
 
 create_tmp_branch_from_remote() {
@@ -250,6 +250,8 @@ push_to_branch() {
   do
     if create_tmp_branch_from_remote $i; then
       if [ $i = "master" ]; then
+        git rebase origin/master
+        git reset origin/master --hard
         echo_yellow "git merge ${tmp_prefix}_${remote_branch} -m '${commit_msg} ${commit_suffix}'"
         git merge ${tmp_prefix}_${remote_branch} -m "${commit_msg} ${commit_suffix}"
         echo_green "git push origin ${tmp_prefix}_$i:$i ..."
@@ -279,6 +281,7 @@ push_to_branch() {
     fi
   done
   git checkout ${current_branch}
+  git branch -m "(Pushed)${current_branch_clean}"
   echo_green "Done."
 }
 
