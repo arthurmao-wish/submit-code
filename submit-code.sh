@@ -16,8 +16,6 @@ hotfix:master,wishpost_release_candidate,wishpost_production
 release:master,wishpost_release_candidate
 END
 )
-alias_hotfix="master,wishpost_release_candidate,wishpost_production"
-alias_release="master,wishpost_release_candidate"
 #####
 
 help_message="\
@@ -33,10 +31,14 @@ Options:
   -a, --assign <USERS>                        Add assignee for your pull request
   -o, --browse                                Browse change
   -m, --merge <TARGET>                        Merge changes to <TARGET>, <TARGET> could be a branch list (split by ',') or an alias (start with ':')
-                                              Alias can be defined in ~/.submit_code_config, starting with 'alias_' prefix.
+                                              Alias can be defined in ~/.submit_code_config.
                                               Default alias:
                                                   :release = wishpost_release_candidate
                                                   :hotfix = wishpost_production
+                                              Define alias in config file:
+                                                  alias=\$(cat <<-END
+                                                    your_alias:branch1,branch2,branch3
+                                                  END)
       Example: -m :hotfix
                -m master,wishpost_release_candidate
 
