@@ -5,7 +5,6 @@ set -o errexit #abort if any command fails
 me=$(basename "$0")
 current_branch=$(git rev-parse --abbrev-ref HEAD)
 current_branch_clean=$(git rev-parse --abbrev-ref HEAD | sed -e 's/([^()]*)//g')
-current_user=$(git config user.name)
 remote_branch="${current_user}-${current_branch_clean}"
 tmp_prefix="_tmp"
 auto_fetch_threshold=3600
@@ -43,6 +42,7 @@ Options:
                -m master,wishpost_release_candidate
 
   --skip_fetch                                Skip fetching latest code
+  --wechat_bot                                WeChat bot ID                      
   --clean                                     Clean uncommited changes
 "
 
@@ -66,13 +66,19 @@ case "${unameOut}" in
     *)          machine="UNKNOWN:${unameOut}"
 esac
 
-echo_green "Git user: ${current_user}, machine ${machine}"
 
 parse_args() {
   # Set args from a local environment file.
   if [ -e "$HOME/.submit_code_config" ]; then
     source $HOME/.submit_code_config
-  fi  
+  fi 
+  # Setup current user name if not exists
+  if [ -z ${current_user} ]; then
+    echo_green "Getting and store git user..."
+    current_user=$(ssh -T git@github.com 2>&1 >/dev/null | sed 's/^Hi \(.*\)!.*$/\1/')
+    echo "current_user=\"${current_user}\"">>$HOME/.submit_code_config
+  fi
+  echo_green "Git user: ${current_user}, machine ${machine}"
 
   # Parse arg flags
   # If something is exposed as an environment variable, set/overwrite it
@@ -119,6 +125,10 @@ parse_args() {
       shift
     elif [[ $1 = "--skip_fetch" ]]; then
       skip_fetch=true
+      shift
+    elif [[ $1 = "--wechat_bot" ]]; then
+      shift
+      wechat_bot=$1
       shift
     else
       break
@@ -198,6 +208,20 @@ create_pull_request() {
   fi
   commit_suffix="(#$(hub pr list -h ${remote_branch} -f %I))"
   git branch -m "${commit_suffix}${current_branch_clean}"
+  # Sending wechat message
+  if [ $wechat_bot ]; then
+    echo_green "Sending wechat message..."
+    pr_url = $(hub pr list -h ${remote_branch} -f %U)
+    curl "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${wechat_bot}" \
+      -H 'Content-Type: application/json' \
+      -d "
+      {
+            \"msgtype\": \"text\",
+            \"text\": {
+                \"content\": \"${pr_url}\"
+            }
+      }"
+  fi
 }
 
 create_tmp_branch_from_remote() {
