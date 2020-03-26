@@ -1,20 +1,6 @@
 #!/usr/bin/env bash
 set -o errexit #abort if any command fails
-
-#### default args ####
 me=$(basename "$0")
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-current_branch_clean=$(git rev-parse --abbrev-ref HEAD | sed -e 's/([^()]*)//g')
-remote_branch="${current_user}-${current_branch_clean}"
-tmp_prefix="_tmp"
-auto_fetch_threshold=3600
-
-# alias for --merge
-alias=$(cat <<-END
-hotfix:master,wishpost_release_candidate,wishpost_production
-release:master,wishpost_release_candidate
-END
-)
 #####
 
 help_message="\
@@ -67,17 +53,35 @@ case "${unameOut}" in
 esac
 
 
-parse_args() {
+define_default_args() {
+  # These args can be override by config gile
+  tmp_prefix="_tmp"
+  auto_fetch_threshold=3600
+  alias=$(cat <<-END
+hotfix:master,wishpost_release_candidate,wishpost_production
+release:master,wishpost_release_candidate
+END
+)
+
   # Set args from a local environment file.
   if [ -e "$HOME/.submit_code_config" ]; then
     source $HOME/.submit_code_config
   fi 
+  # These args can't be override
+
   # Setup current user name if not exists
   if [ -z ${current_user} ]; then
     echo_green "Getting and store git user..."
     current_user=$(ssh -T git@github.com 2>&1 >/dev/null | sed 's/^Hi \(.*\)!.*$/\1/')
     echo "current_user=\"${current_user}\"">>$HOME/.submit_code_config
   fi
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  current_branch_clean=$(git rev-parse --abbrev-ref HEAD | sed -e 's/([^()]*)//g')
+  remote_branch="${current_user}-${current_branch_clean}"
+}
+
+parse_args() {
+  define_default_args
   echo_green "Git user: ${current_user}, machine ${machine}"
 
   # Parse arg flags
@@ -211,7 +215,7 @@ create_pull_request() {
   # Sending wechat message
   if [ $wechat_bot ]; then
     echo_green "Sending wechat message..."
-    pr_url = $(hub pr list -h ${remote_branch} -f %U)
+    pr_url=$(hub pr list -h ${remote_branch} -f %U)
     curl "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${wechat_bot}" \
       -H 'Content-Type: application/json' \
       -d "
