@@ -212,6 +212,7 @@ create_pull_request() {
   fi
   commit_suffix="(#$(hub pr list -h ${remote_branch} -f %I))"
   git branch -m "${commit_suffix}${current_branch_clean}"
+  commit_msg=$(git log -1 --pretty=%B)
   # Sending wechat message
   if [ $wechat_bot ]; then
     echo_green "Sending wechat message..."
@@ -222,8 +223,8 @@ create_pull_request() {
       {
             \"msgtype\": \"text\",
             \"text\": {
-                \"content\": \"${pr_url}\"
-            }
+                \"content\": \"Commit:${commit_msg}\nAssign: $assign\nURL: ${pr_url}\"
+	    }
       }"
   fi
 }
