@@ -215,7 +215,7 @@ create_pull_request() {
   # Sending wechat message
   if [ $wechat_bot ]; then
     echo_green "Sending wechat message..."
-    pr_url=$(hub pr list -h ${remote_branch} -f %U)
+    pr_url=$(hub pr list -h ${remote_branch} -f '%U \n %t')
     curl "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${wechat_bot}" \
       -H 'Content-Type: application/json' \
       -d "
@@ -278,22 +278,19 @@ push_to_branch() {
   echo_green "Merging changes..."
   for i in $(echo $push_branch | sed "s/,/ /g")
   do
+    if [ $i = "master" ]; then
+      git checkout ${tmp_prefix}_${remote_branch}
+      echo_green "git push origin ${tmp_prefix}_${remote_branch}:master ..."
+      $(git push origin ${tmp_prefix}_${remote_branch}:master) && continue
+      echo_yellow "push failed, sync latest code and retry..."
+      git pull
+      $(git push origin ${tmp_prefix}_${remote_branch}:master) && continue
+      echo_yellow "Push master failed, exit.."
+      return 1
+    fi
     if create_tmp_branch_from_remote $i; then
       if [ $i = "master" ]; then
-        git rebase origin/master
-        git reset origin/master --hard
-        echo_yellow "git merge ${tmp_prefix}_${remote_branch} -m '${commit_msg} ${commit_suffix}'"
-        git merge ${tmp_prefix}_${remote_branch} -m "${commit_msg} ${commit_suffix}"
-        echo_green "git push origin ${tmp_prefix}_$i:$i ..."
-        $(git push origin ${tmp_prefix}_$i:$i) && continue
-        echo_yellow "push failed, sync latest code and retry..."
-        git fetch origin
-        git rebase origin/master
-        git reset origin/master --hard
-        git merge ${tmp_prefix}_${remote_branch} -m "${commit_msg} ${commit_suffix}"
-        $(git push origin ${tmp_prefix}_$i:$i) && continue
-        echo_yellow "Push master failed, exit.."
-        return 1
+        continue
       else
         echo_yellow "If cherry-pick failed with conflicts, please fix it then manually cherry/push to the branch. Commit ID:${commit_hash}"
         git cherry-pick ${commit_hash} --allow-empty
