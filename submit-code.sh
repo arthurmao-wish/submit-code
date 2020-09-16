@@ -270,7 +270,8 @@ push_to_branch() {
   if create_tmp_branch_from_remote ${remote_branch}; then
     commit_msg=$(git log -1 --pretty=%B)
     commit_hash="$(git log -1 --pretty=%H)"
-    commit_suffix="(#$(hub pr list -h ${remote_branch} -f %I))"
+    commit_id=$(hub pr list -h ${remote_branch} -f %I)
+    commit_suffix="(#${commit_id})"
   else
     return 1
   fi
@@ -290,7 +291,7 @@ push_to_branch() {
     fi
     if create_tmp_branch_from_remote $i; then
       if [ $i = "master" ]; then
-        continue
+        hub api -XPUT "repos/ContextLogic/wishpost/pulls/${commit_id}/merge" -F "merge_method=rebase"
       else
         echo_yellow "If cherry-pick failed with conflicts, please fix it then manually cherry/push to the branch. Commit ID:${commit_hash}"
         git cherry-pick ${commit_hash} --allow-empty
