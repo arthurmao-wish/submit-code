@@ -279,16 +279,6 @@ push_to_branch() {
   echo_green "Merging changes..."
   for i in $(echo $push_branch | sed "s/,/ /g")
   do
-    if [ $i = "master" ]; then
-      git checkout ${tmp_prefix}_${remote_branch}
-      echo_green "git push origin ${tmp_prefix}_${remote_branch}:master ..."
-      $(git push origin ${tmp_prefix}_${remote_branch}:master) && continue
-      echo_yellow "push failed, sync latest code and retry..."
-      git pull
-      $(git push origin ${tmp_prefix}_${remote_branch}:master) && continue
-      echo_yellow "Push master failed, exit.."
-      return 1
-    fi
     if create_tmp_branch_from_remote $i; then
       if [ $i = "master" ]; then
         hub api -XPUT "repos/ContextLogic/wishpost/pulls/${commit_id}/merge" -F "merge_method=rebase"
