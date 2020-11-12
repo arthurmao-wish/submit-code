@@ -18,6 +18,7 @@ submit-code.sh -p -r <reviewers, split by comma> -a <assign>
 $ cat ~/.submit_code_config
 reviewer=cherishqi,frankliu-wish,sherryhuang-wish
 assign=arthurmao-wish
+slack_bot_url=https://xx/xxx
 ```
 
 # Update pull request

@@ -29,6 +29,7 @@ Options:
 
   --skip_fetch                                Skip fetching latest code
   --wechat_bot                                WeChat bot ID                      
+  --slack_bot_url                             Slack bot url
   --clean                                     Clean uncommited changes
 "
 
@@ -134,6 +135,10 @@ parse_args() {
       shift
       wechat_bot=$1
       shift
+    elif [[ $1 = "--slack_bot_url" ]]; then
+      shift
+      slack_bot_url=$1
+      shift
     else
       break
     fi
@@ -212,6 +217,7 @@ create_pull_request() {
   fi
   commit_suffix="(#$(hub pr list -h ${remote_branch} -f %I))"
   git branch -m "${commit_suffix}${current_branch_clean}"
+  commit_msg=$(git log -1 --pretty=%B)
   # Sending wechat message
   if [ $wechat_bot ]; then
     echo_green "Sending wechat message..."
@@ -222,8 +228,19 @@ create_pull_request() {
       {
             \"msgtype\": \"text\",
             \"text\": {
-                \"content\": \"${pr_url}\"
-            }
+                \"content\": \"Commit:${commit_msg}\nAssign: $assign\nURL: ${pr_url}\"
+	    }
+      }"
+  fi
+  if [ $slack_bot_url ]; then
+    echo_green "Sending slack message..."
+    pr_url=$(hub pr list -h ${remote_branch} -f '%U \n %t')
+    curl "${slack_bot_url}" \
+      -X 'POST' \
+      -H 'Content-Type: application/json' \
+      -d "
+      {
+            \"text\": \"Commit:${commit_msg}\nAssign: $assign\nURL: ${pr_url}\"
       }"
   fi
 }
